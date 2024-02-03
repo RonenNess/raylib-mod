@@ -973,10 +973,10 @@ void BeginMode3D(Camera camera)
     if (camera.projection == CAMERA_PERSPECTIVE)
     {
         // Setup perspective projection
-        double top = RL_CULL_DISTANCE_NEAR*tan(camera.fovy*0.5*DEG2RAD);
+        double top = camera.near*tan(camera.fovy*0.5*DEG2RAD);
         double right = top*aspect;
 
-        rlFrustum(-right, right, -top, top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        rlFrustum(-right, right, -top, top, camera.near, camera.far);
     }
     else if (camera.projection == CAMERA_ORTHOGRAPHIC)
     {
@@ -984,7 +984,7 @@ void BeginMode3D(Camera camera)
         double top = camera.fovy/2.0;
         double right = top*aspect;
 
-        rlOrtho(-right, right, -top,top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        rlOrtho(-right, right, -top,top, camera.near, camera.far);
     }
 
     rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
@@ -1414,7 +1414,7 @@ Ray GetMouseRay(Vector2 mouse, Camera camera)
     if (camera.projection == CAMERA_PERSPECTIVE)
     {
         // Calculate projection matrix from perspective
-        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)GetScreenWidth()/(double)GetScreenHeight()), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)GetScreenWidth()/(double)GetScreenHeight()), camera.near, camera.far);
     }
     else if (camera.projection == CAMERA_ORTHOGRAPHIC)
     {
@@ -1498,7 +1498,7 @@ Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int heigh
     if (camera.projection == CAMERA_PERSPECTIVE)
     {
         // Calculate projection matrix from perspective
-        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)width/(double)height), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)width/(double)height), camera.near, camera.far);
     }
     else if (camera.projection == CAMERA_ORTHOGRAPHIC)
     {
@@ -1507,7 +1507,7 @@ Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int heigh
         double right = top*aspect;
 
         // Calculate projection matrix from orthographic
-        matProj = MatrixOrtho(-right, right, -top, top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        matProj = MatrixOrtho(-right, right, -top, top, camera.near, camera.far);
     }
 
     // Calculate view matrix from camera look at (and transpose it)
@@ -3261,6 +3261,47 @@ static void ScanDirectoryFilesRecursively(const char *basePath, FilePathList *fi
         closedir(dir);
     }
     else TRACELOG(LOG_WARNING, "FILEIO: Directory cannot be opened (%s)", basePath);
+}
+
+// Scan all files and directories recursively from a base path
+void* ScanDirectoryFilesRecursivelyCallback(const char *basePath, void* (*fileCallback)(const char *filename, int isDir, void *userdata), void *userdata) 
+{
+    char path[MAX_FILEPATH_LENGTH] = { 0 };
+    memset(path, 0, MAX_FILEPATH_LENGTH);
+
+    struct dirent *dp = NULL;
+    DIR *dir = opendir(basePath);
+
+    if (dir != NULL)
+    {
+        while (((dp = readdir(dir)) != NULL))
+        {
+            if ((strcmp(dp->d_name, ".") != 0) && (strcmp(dp->d_name, "..") != 0))
+            {
+                // Construct new path from our base path
+            #if defined(_WIN32)
+                sprintf(path, "%s\\%s", basePath, dp->d_name);
+            #else
+                sprintf(path, "%s/%s", basePath, dp->d_name);
+            #endif
+                int isDir = !IsPathFile(path);
+                void *result = fileCallback(path, isDir, userdata);
+                
+                if (isDir && result == NULL)
+                {
+                    result = ScanDirectoryFilesRecursivelyCallback(path, fileCallback, userdata);
+                }
+
+                if (result != 0) {
+                    return result;
+                }
+            }
+        }
+
+        closedir(dir);
+    }
+    else TRACELOG(LOG_WARNING, "FILEIO: Directory cannot be opened (%s)", basePath);
+    return NULL;
 }
 
 #if defined(SUPPORT_AUTOMATION_EVENTS)

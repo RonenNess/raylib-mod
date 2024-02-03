@@ -57,6 +57,7 @@
 #include <stdlib.h>         // Required for: malloc(), free()
 #include <string.h>         // Required for: memcmp(), strlen()
 #include <math.h>           // Required for: sinf(), cosf(), sqrtf(), fabsf()
+#include <memory.h>         // Required for: memcpy()
 
 #if defined(SUPPORT_FILEFORMAT_OBJ) || defined(SUPPORT_FILEFORMAT_MTL)
     #define TINYOBJ_MALLOC RL_MALLOC
@@ -1746,6 +1747,190 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
     RL_FREE(instanceTransforms);
 #endif
 }
+
+
+
+
+
+
+
+
+// Draw multiple mesh instances with material and different transforms
+void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms, int instances)
+{
+#if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
+    // Instancing required variables
+    float16* instanceTransforms = NULL;
+    unsigned int instancesVboId = 0;
+
+    // Bind shader program
+    rlEnableShader(shader.id);
+
+    // Get a copy of current matrices to work with,
+    // just in case stereo render is required, and we need to modify them
+    // NOTE: At this point the modelview matrix just contains the view matrix (camera)
+    // That's because BeginMode3D() sets it and there is no model-drawing function
+    // that modifies it, all use rlPushMatrix() and rlPopMatrix()
+    Matrix matModel = MatrixIdentity();
+    Matrix matView = rlGetMatrixModelview();
+    Matrix matModelView = MatrixIdentity();
+    Matrix matProjection = rlGetMatrixProjection();
+
+    // Upload view and projection matrices (if locations available)
+    if (shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_VIEW], matView);
+    if (shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
+
+    // Create instances buffer
+    instanceTransforms = (float16*)RL_MALLOC(instances * sizeof(float16));
+
+    // Fill buffer with instances transformations as float16 arrays
+    for (int i = 0; i < instances; i++) instanceTransforms[i] = MatrixToFloatV(transforms[i]);
+
+    // Enable mesh VAO to attach new buffer
+    rlEnableVertexArray(mesh.vaoId);
+
+    // This could alternatively use a static VBO and either glMapBuffer() or glBufferSubData().
+    // It isn't clear which would be reliably faster in all cases and on all platforms,
+    // anecdotally glMapBuffer() seems very slow (syncs) while glBufferSubData() seems
+    // no faster, since we're transferring all the transform matrices anyway
+    instancesVboId = rlLoadVertexBuffer(instanceTransforms, instances * sizeof(float16), false);
+
+    // Instances transformation matrices are send to shader attribute location: SHADER_LOC_MATRIX_MODEL
+    for (unsigned int i = 0; i < 4; i++)
+    {
+        rlEnableVertexAttribute(shader.locs[SHADER_LOC_MATRIX_MODEL] + i);
+        rlSetVertexAttribute(shader.locs[SHADER_LOC_MATRIX_MODEL] + i, 4, RL_FLOAT, 0, sizeof(Matrix), (void*)(i * sizeof(Vector4)));
+        rlSetVertexAttributeDivisor(shader.locs[SHADER_LOC_MATRIX_MODEL] + i, 1);
+    }
+
+    rlDisableVertexBuffer();
+    rlDisableVertexArray();
+
+    // Accumulate internal matrix transform (push/pop) and view matrix
+    // NOTE: In this case, model instance transformation must be computed in the shader
+    matModelView = MatrixMultiply(rlGetMatrixTransform(), matView);
+
+    // Upload model normal matrix (if locations available)
+    if (shader.locs[SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
+    //-----------------------------------------------------
+
+    // Try binding vertex array objects (VAO)
+    // or use VBOs if not possible
+    if (!rlEnableVertexArray(mesh.vaoId))
+    {
+        // Bind mesh VBO data: vertex position (shader-location = 0)
+        rlEnableVertexBuffer(mesh.vboId[0]);
+        rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_POSITION], 3, RL_FLOAT, 0, 0, 0);
+        rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_POSITION]);
+
+        // Bind mesh VBO data: vertex texcoords (shader-location = 1)
+        rlEnableVertexBuffer(mesh.vboId[1]);
+        rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TEXCOORD01], 2, RL_FLOAT, 0, 0, 0);
+        rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TEXCOORD01]);
+
+        if (shader.locs[SHADER_LOC_VERTEX_NORMAL] != -1)
+        {
+            // Bind mesh VBO data: vertex normals (shader-location = 2)
+            rlEnableVertexBuffer(mesh.vboId[2]);
+            rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_NORMAL], 3, RL_FLOAT, 0, 0, 0);
+            rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_NORMAL]);
+        }
+
+        // Bind mesh VBO data: vertex colors (shader-location = 3, if available)
+        if (shader.locs[SHADER_LOC_VERTEX_COLOR] != -1)
+        {
+            if (mesh.vboId[3] != 0)
+            {
+                rlEnableVertexBuffer(mesh.vboId[3]);
+                rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_COLOR], 4, RL_UNSIGNED_BYTE, 1, 0, 0);
+                rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_COLOR]);
+            }
+            else
+            {
+                // Set default value for unused attribute
+                // NOTE: Required when using default shader and no VAO support
+                float value[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+                rlSetVertexAttributeDefault(shader.locs[SHADER_LOC_VERTEX_COLOR], value, SHADER_ATTRIB_VEC4, 4);
+                rlDisableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_COLOR]);
+            }
+        }
+
+        // Bind mesh VBO data: vertex tangents (shader-location = 4, if available)
+        if (shader.locs[SHADER_LOC_VERTEX_TANGENT] != -1)
+        {
+            rlEnableVertexBuffer(mesh.vboId[4]);
+            rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TANGENT], 4, RL_FLOAT, 0, 0, 0);
+            rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TANGENT]);
+        }
+
+        // Bind mesh VBO data: vertex texcoords2 (shader-location = 5, if available)
+        if (shader.locs[SHADER_LOC_VERTEX_TEXCOORD02] != -1)
+        {
+            rlEnableVertexBuffer(mesh.vboId[5]);
+            rlSetVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TEXCOORD02], 2, RL_FLOAT, 0, 0, 0);
+            rlEnableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_TEXCOORD02]);
+        }
+
+        if (mesh.indices != NULL) rlEnableVertexBufferElement(mesh.vboId[6]);
+    }
+
+    // WARNING: Disable vertex attribute color input if mesh can not provide that data (despite location being enabled in shader)
+    if (mesh.vboId[3] == 0) rlDisableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_COLOR]);
+
+    int eyeCount = 1;
+    if (rlIsStereoRenderEnabled()) eyeCount = 2;
+
+    for (int eye = 0; eye < eyeCount; eye++)
+    {
+        // Calculate model-view-projection matrix (MVP)
+        Matrix matModelViewProjection = MatrixIdentity();
+        if (eyeCount == 1) matModelViewProjection = MatrixMultiply(matModelView, matProjection);
+        else
+        {
+            // Setup current eye viewport (half screen width)
+            rlViewport(eye * rlGetFramebufferWidth() / 2, 0, rlGetFramebufferWidth() / 2, rlGetFramebufferHeight());
+            matModelViewProjection = MatrixMultiply(MatrixMultiply(matModelView, rlGetMatrixViewOffsetStereo(eye)), rlGetMatrixProjectionStereo(eye));
+        }
+
+        // Send combined model-view-projection matrix to shader
+        rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
+
+        // Draw mesh instanced
+        if (mesh.indices != NULL) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, 0, instances);
+        else rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
+    }
+
+    // Disable all possible vertex array objects (or VBOs)
+    rlDisableVertexArray();
+    rlDisableVertexBuffer();
+    rlDisableVertexBufferElement();
+
+    // Disable shader program
+    rlDisableShader();
+
+    // Remove instance transforms buffer
+    rlUnloadVertexBuffer(instancesVboId);
+    RL_FREE(instanceTransforms);
+#endif
+}
+
+
+void UnbindAllTextures()
+{    // Unbind all bound texture maps
+    for (int i = 0; i < MAX_MATERIAL_MAPS; i++)
+    {
+        // Select current shader texture slot
+        rlActiveTextureSlot(i);
+
+        // Disable texture for active slot
+        if ((i == MATERIAL_MAP_IRRADIANCE) ||
+            (i == MATERIAL_MAP_PREFILTER) ||
+            (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+        else rlDisableTexture();
+    }
+}
+
+
 
 // Unload mesh from memory (RAM and VRAM)
 void UnloadMesh(Mesh mesh)
@@ -4956,6 +5141,9 @@ static Model LoadGLTF(const char *fileName)
         {
             model.materials[j] = LoadMaterialDefault();
             const char *texPath = GetDirectoryPath(fileName);
+            char *srcName = data->materials[i].name;
+            char *dstName = model.materials[j].name;
+            strncpy(dstName, srcName, MAX_NAME_LENGTH);
 
             // Check glTF material flow: PBR metallic/roughness flow
             // NOTE: Alternatively, materials can follow PBR specular/glossiness flow
@@ -5051,6 +5239,7 @@ static Model LoadGLTF(const char *fileName)
                 // Other alternatives: points, lines, line_strip, triangle_strip
                 if (data->meshes[i].primitives[p].type != cgltf_primitive_type_triangles) continue;
 
+                strncpy(model.meshes[meshIndex].name, data->meshes[i].name, MAX_NAME_LENGTH);
                 // NOTE: Attributes data could be provided in several data formats (8, 8u, 16u, 32...),
                 // Only some formats for each attribute type are supported, read info at the top of this function!
 

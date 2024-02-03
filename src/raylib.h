@@ -86,6 +86,8 @@
 #define RAYLIB_VERSION_PATCH 0
 #define RAYLIB_VERSION  "5.1-dev"
 
+#define MAX_NAME_LENGTH 64
+
 // Function specifiers in case library is build/used as a shared library
 // NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
 // NOTE: visibility("default") attribute makes symbols "visible" when compiled with -fvisibility=hidden
@@ -323,6 +325,8 @@ typedef struct Camera3D {
     Vector3 up;             // Camera up vector (rotation over its axis)
     float fovy;             // Camera field-of-view aperture in Y (degrees) in perspective, used as near plane width in orthographic
     int projection;         // Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
+    float near;             // Camera near plane plane distance
+    float far;              // Camera far plane distance
 } Camera3D;
 
 typedef Camera3D Camera;    // Camera type fallback, defaults to Camera3D
@@ -333,10 +337,13 @@ typedef struct Camera2D {
     Vector2 target;         // Camera target (rotation and zoom origin)
     float rotation;         // Camera rotation in degrees
     float zoom;             // Camera zoom (scaling), should be 1.0f by default
+    float near;             // Camera near plane distance (Z)
+    float far;              // Camera far plane distance (Z)
 } Camera2D;
 
 // Mesh, vertex data and vao/vbo
 typedef struct Mesh {
+    char name[MAX_NAME_LENGTH];// Mesh name
     int vertexCount;        // Number of vertices stored in arrays
     int triangleCount;      // Number of triangles stored (indexed or not)
 
@@ -375,6 +382,7 @@ typedef struct MaterialMap {
 
 // Material, includes shader and maps
 typedef struct Material {
+    char name[MAX_NAME_LENGTH];// Material name
     Shader shader;          // Material shader
     MaterialMap *maps;      // Material maps array (MAX_MATERIAL_MAPS)
     float params[4];        // Material generic parameters (if required)
@@ -389,12 +397,13 @@ typedef struct Transform {
 
 // Bone, skeletal animation bone
 typedef struct BoneInfo {
-    char name[32];          // Bone name
+    char name[MAX_NAME_LENGTH];          // Bone name
     int parent;             // Bone parent
 } BoneInfo;
 
 // Model, meshes, materials and animation data
 typedef struct Model {
+    char name[MAX_NAME_LENGTH];             // Model name
     Matrix transform;       // Local transform matrix
 
     int meshCount;          // Number of meshes
@@ -1125,6 +1134,7 @@ RLAPI bool IsPathFile(const char *path);                          // Check if a 
 RLAPI FilePathList LoadDirectoryFiles(const char *dirPath);       // Load directory filepaths
 RLAPI FilePathList LoadDirectoryFilesEx(const char *basePath, const char *filter, bool scanSubdirs); // Load directory filepaths with extension filtering and recursive directory scan
 RLAPI void UnloadDirectoryFiles(FilePathList files);              // Unload filepaths
+RLAPI void* ScanDirectoryFilesRecursivelyCallback(const char *basePath, void* (*fileCallback)(const char *filename, int isDir, void *userdata), void *userdata); // Scan directory recursively and call a function for each found file or directory found. If the return value is not NULL, it will stop the iteration and return that value.
 RLAPI bool IsFileDropped(void);                                   // Check if a file has been dropped into window
 RLAPI FilePathList LoadDroppedFiles(void);                        // Load dropped filepaths
 RLAPI void UnloadDroppedFiles(FilePathList files);                // Unload dropped filepaths
@@ -1539,6 +1549,8 @@ RLAPI void UpdateMeshBuffer(Mesh mesh, int index, const void *data, int dataSize
 RLAPI void UnloadMesh(Mesh mesh);                                                           // Unload mesh data from CPU and GPU
 RLAPI void DrawMesh(Mesh mesh, Material material, Matrix transform);                        // Draw a 3d mesh with material and transform
 RLAPI void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, int instances); // Draw multiple mesh instances with material and different transforms
+RLAPI void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms, int instances); // Draw multiple mesh instances with material and different transforms
+RLAPI void UnbindAllTextures();
 RLAPI BoundingBox GetMeshBoundingBox(Mesh mesh);                                            // Compute mesh bounding box limits
 RLAPI void GenMeshTangents(Mesh *mesh);                                                     // Compute mesh tangents
 RLAPI bool ExportMesh(Mesh mesh, const char *fileName);                                     // Export mesh data to file, returns true on success
