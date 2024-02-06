@@ -1388,6 +1388,31 @@ void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture)
     }
 }
 
+
+void UnbindAllTextures()
+{    // Unbind all bound texture maps
+    for (int i = 0; i < RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS; i++)
+    {
+        rlActiveTextureSlot(i);
+        RLGL.State.activeTextureId[i] = 0;
+        rlDisableTexture();
+        rlDisableTextureCubemap();
+    }
+}
+
+// Set shader uniform value for texture
+void SetShaderValueTextureEx(Shader shader, int locIndex, Texture2D texture, int samplerSlot)
+{
+    if (locIndex > -1)
+    {
+        rlEnableShader(shader.id);
+        rlSetUniformSampler(locIndex, texture.id);
+        glUniform1i(locIndex, samplerSlot);              // Activate new texture unit
+        RLGL.State.activeTextureId[samplerSlot] = texture.id;
+        //rlDisableShader();
+    }
+}
+
 //----------------------------------------------------------------------------------
 // Module Functions Definition: Screen-space Queries
 //----------------------------------------------------------------------------------

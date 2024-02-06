@@ -1910,21 +1910,6 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
 }
 
 
-void UnbindAllTextures()
-{    // Unbind all bound texture maps
-    for (int i = 0; i < MAX_MATERIAL_MAPS; i++)
-    {
-        // Select current shader texture slot
-        rlActiveTextureSlot(i);
-
-        // Disable texture for active slot
-        if ((i == MATERIAL_MAP_IRRADIANCE) ||
-            (i == MATERIAL_MAP_PREFILTER) ||
-            (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
-        else rlDisableTexture();
-    }
-}
-
 
 
 // Unload mesh from memory (RAM and VRAM)
