@@ -1771,14 +1771,14 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
     // NOTE: At this point the modelview matrix just contains the view matrix (camera)
     // That's because BeginMode3D() sets it and there is no model-drawing function
     // that modifies it, all use rlPushMatrix() and rlPopMatrix()
-    Matrix matModel = MatrixIdentity();
-    Matrix matView = rlGetMatrixModelview();
-    Matrix matModelView = MatrixIdentity();
-    Matrix matProjection = rlGetMatrixProjection();
+    //Matrix matModel = MatrixIdentity();
+    //Matrix matView = rlGetMatrixModelview();
+    //Matrix matModelView = MatrixIdentity();
+    //Matrix matProjection = rlGetMatrixProjection();
 
     // Upload view and projection matrices (if locations available)
-    if (shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_VIEW], matView);
-    if (shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
+    //if (shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) { rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_VIEW], rlGetMatrixModelview()); }
+    //if (shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) { rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_PROJECTION], rlGetMatrixProjection()); }
 
     // Enable mesh VAO to attach new buffer
     rlEnableVertexArray(mesh.vaoId);
@@ -1800,12 +1800,6 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
     rlDisableVertexBuffer();
     rlDisableVertexArray();
 
-    // Accumulate internal matrix transform (push/pop) and view matrix
-    // NOTE: In this case, model instance transformation must be computed in the shader
-    matModelView = MatrixMultiply(rlGetMatrixTransform(), matView);
-
-    // Upload model normal matrix (if locations available)
-    if (shader.locs[SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
     //-----------------------------------------------------
 
     // Try binding vertex array objects (VAO)
@@ -1871,12 +1865,13 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
     // WARNING: Disable vertex attribute color input if mesh can not provide that data (despite location being enabled in shader)
     if (mesh.vboId[3] == 0) rlDisableVertexAttribute(shader.locs[SHADER_LOC_VERTEX_COLOR]);
 
-    int eyeCount = 1;
-    if (rlIsStereoRenderEnabled()) eyeCount = 2;
+    //int eyeCount = 1;
+    //if (rlIsStereoRenderEnabled()) eyeCount = 2;
 
-    for (int eye = 0; eye < eyeCount; eye++)
+    //for (int eye = 0; eye < eyeCount; eye++)
     {
         // Calculate model-view-projection matrix (MVP)
+        /*
         Matrix matModelViewProjection = MatrixIdentity();
         if (eyeCount == 1) matModelViewProjection = MatrixMultiply(matModelView, matProjection);
         else
@@ -1888,10 +1883,17 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
 
         // Send combined model-view-projection matrix to shader
         rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
+        */
 
         // Draw mesh instanced
-        if (mesh.indices != NULL) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, 0, instances);
-        else rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
+        if (mesh.indices != NULL)
+        {
+            rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, 0, instances);
+        }
+        else
+        {
+            rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
+        }
     }
 
     // Disable all possible vertex array objects (or VBOs)
