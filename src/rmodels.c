@@ -1756,11 +1756,11 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
 
 
 // Draw multiple mesh instances with material and different transforms
-void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms, int instances)
+void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int instances)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
+
     // Instancing required variables
-    float16* instanceTransforms = NULL;
     unsigned int instancesVboId = 0;
 
     // Bind shader program
@@ -1780,12 +1780,6 @@ void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms,
     if (shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_VIEW], matView);
     if (shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(shader.locs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
 
-    // Create instances buffer
-    instanceTransforms = (float16*)RL_MALLOC(instances * sizeof(float16));
-
-    // Fill buffer with instances transformations as float16 arrays
-    for (int i = 0; i < instances; i++) instanceTransforms[i] = MatrixToFloatV(transforms[i]);
-
     // Enable mesh VAO to attach new buffer
     rlEnableVertexArray(mesh.vaoId);
 
@@ -1793,7 +1787,7 @@ void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms,
     // It isn't clear which would be reliably faster in all cases and on all platforms,
     // anecdotally glMapBuffer() seems very slow (syncs) while glBufferSubData() seems
     // no faster, since we're transferring all the transform matrices anyway
-    instancesVboId = rlLoadVertexBuffer(instanceTransforms, instances * sizeof(float16), false);
+    instancesVboId = rlLoadVertexBuffer(transforms, instances * sizeof(float16), false);
 
     // Instances transformation matrices are send to shader attribute location: SHADER_LOC_MATRIX_MODEL
     for (unsigned int i = 0; i < 4; i++)
@@ -1910,7 +1904,6 @@ void DrawMeshInstancedShader(Mesh mesh, Shader shader, const Matrix* transforms,
 
     // Remove instance transforms buffer
     rlUnloadVertexBuffer(instancesVboId);
-    RL_FREE(instanceTransforms);
 #endif
 }
 
