@@ -809,6 +809,7 @@ void DrawRectangleWithoutChangingTexture(Rectangle rec, Rectangle source, Vector
     //Rectangle shapeRect = GetShapesTextureRectangle();
 
     rlBegin(RL_QUADS);
+    rlDontAutoBindTextures();
 
     rlNormal3f(0.0f, 0.0f, 1.0f);
     rlColor4ub(color.r, color.g, color.b, color.a);

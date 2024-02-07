@@ -1001,6 +1001,8 @@ typedef struct rlglData {
         int *defaultShaderLocs;             // Default shader locations pointer to be used on rendering
         unsigned int currentShaderId;       // Current shader id to be used on rendering (by default, defaultShaderId)
         int *currentShaderLocs;             // Current shader locations pointer to be used on rendering (by default, defaultShaderLocs)
+        
+        bool setTextures;                   // only if true will bind textures when rendering batch
 
         bool stereoRender;                  // Stereo rendering flag
         Matrix projectionStereo[2];         // VR stereo rendering eyes projection matrices
@@ -1387,6 +1389,11 @@ void rlBegin(int mode)
         RLGL.currentBatch->draws[RLGL.currentBatch->drawCounter - 1].vertexCount = 0;
         RLGL.currentBatch->draws[RLGL.currentBatch->drawCounter - 1].textureId = RLGL.State.defaultTextureId;
     }
+}
+
+void rlDontAutoBindTextures()
+{
+    RLGL.State.setTextures = false;
 }
 
 // Finish vertex providing
@@ -2817,7 +2824,7 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
         {
             // Set current shader and upload current MVP matrix
             glUseProgram(RLGL.State.currentShaderId);
-
+            
             // Create modelview-projection matrix and upload to shader
             Matrix matMVP = rlMatrixMultiply(RLGL.State.modelview, RLGL.State.projection);
             float matMVPfloat[16] = {
@@ -2855,23 +2862,28 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
 
             // Activate additional sampler textures
             // Those additional textures will be common for all draw calls of the batch
-            for (int i = 0; i < RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS; i++)
+            if (RLGL.State.setTextures)
             {
-                if (RLGL.State.activeTextureId[i] > 0)
+                for (int i = 0; i < RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS; i++)
                 {
-                    glActiveTexture(GL_TEXTURE0 + 1 + i);
-                    glBindTexture(GL_TEXTURE_2D, RLGL.State.activeTextureId[i]);
+                    if (RLGL.State.activeTextureId[i] > 0)
+                    {
+                        glActiveTexture(GL_TEXTURE0 + 1 + i);
+                        glBindTexture(GL_TEXTURE_2D, RLGL.State.activeTextureId[i]);
+                    }
                 }
-            }
 
-            // Activate default sampler2D texture0 (one texture is always active for default batch shader)
-            // NOTE: Batch system accumulates calls by texture0 changes, additional textures are enabled for all the draw calls
-            glActiveTexture(GL_TEXTURE0);
+                // Activate default sampler2D texture0 (one texture is always active for default batch shader)
+                // NOTE: Batch system accumulates calls by texture0 changes, additional textures are enabled for all the draw calls
+                glActiveTexture(GL_TEXTURE0);
+            }
 
             for (int i = 0, vertexOffset = 0; i < batch->drawCounter; i++)
             {
                 // Bind current draw call texture, activated as GL_TEXTURE0 and Bound to sampler2D texture0 by default
-                glBindTexture(GL_TEXTURE_2D, batch->draws[i].textureId);
+                if (RLGL.State.setTextures) {
+                    glBindTexture(GL_TEXTURE_2D, batch->draws[i].textureId);
+                }
 
                 if ((batch->draws[i].mode == RL_LINES) || (batch->draws[i].mode == RL_TRIANGLES)) glDrawArrays(batch->draws[i].mode, vertexOffset, batch->draws[i].vertexCount);
                 else
@@ -2929,6 +2941,7 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
     }
 
     // Reset active texture units for next batch
+    RLGL.State.setTextures = true;
     for (int i = 0; i < RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS; i++) RLGL.State.activeTextureId[i] = 0;
 
     // Reset draws counter to one draw for the batch
