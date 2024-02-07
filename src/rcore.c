@@ -1406,7 +1406,7 @@ void SetShaderValueTextureEx(Shader shader, int locIndex, Texture2D texture, int
     if (locIndex > -1)
     {
         rlEnableShader(shader.id);
-        rlSetUniformSampler(locIndex, texture.id);
+        //rlSetUniformSampler(locIndex, texture.id);
         glUniform1i(locIndex, samplerSlot);              // Activate new texture unit
         RLGL.State.activeTextureId[samplerSlot] = texture.id;
         //rlDisableShader();
