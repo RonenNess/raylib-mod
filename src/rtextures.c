@@ -4094,6 +4094,113 @@ void SetTextureWrap(Texture2D texture, int wrap)
     }
 }
 
+
+
+
+
+
+// Set texture scaling filter mode
+void SetTextureFilterWithoutBind(Texture2D texture, int filter)
+{
+    switch (filter)
+    {
+    case TEXTURE_FILTER_POINT:
+    {
+        if (texture.mipmaps > 1)
+        {
+            // RL_TEXTURE_FILTER_MIP_NEAREST - tex filter: POINT, mipmaps filter: POINT (sharp switching between mipmaps)
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_MIP_NEAREST);
+
+            // RL_TEXTURE_FILTER_NEAREST - tex filter: POINT (no filter), no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_NEAREST);
+        }
+        else
+        {
+            // RL_TEXTURE_FILTER_NEAREST - tex filter: POINT (no filter), no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_NEAREST);
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_NEAREST);
+        }
+    } break;
+    case TEXTURE_FILTER_BILINEAR:
+    {
+        if (texture.mipmaps > 1)
+        {
+            // RL_TEXTURE_FILTER_LINEAR_MIP_NEAREST - tex filter: BILINEAR, mipmaps filter: POINT (sharp switching between mipmaps)
+            // Alternative: RL_TEXTURE_FILTER_NEAREST_MIP_LINEAR - tex filter: POINT, mipmaps filter: BILINEAR (smooth transition between mipmaps)
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_LINEAR_MIP_NEAREST);
+
+            // RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_LINEAR);
+        }
+        else
+        {
+            // RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_LINEAR);
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_LINEAR);
+        }
+    } break;
+    case TEXTURE_FILTER_TRILINEAR:
+    {
+        if (texture.mipmaps > 1)
+        {
+            // RL_TEXTURE_FILTER_MIP_LINEAR - tex filter: BILINEAR, mipmaps filter: BILINEAR (smooth transition between mipmaps)
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_MIP_LINEAR);
+
+            // RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_LINEAR);
+        }
+        else
+        {
+            TRACELOG(LOG_WARNING, "TEXTURE: [ID %i] No mipmaps available for TRILINEAR texture filtering", texture.id);
+
+            // RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_FILTER, RL_TEXTURE_FILTER_LINEAR);
+            rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MAG_FILTER, RL_TEXTURE_FILTER_LINEAR);
+        }
+    } break;
+    case TEXTURE_FILTER_ANISOTROPIC_4X: rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_FILTER_ANISOTROPIC, 4); break;
+    case TEXTURE_FILTER_ANISOTROPIC_8X: rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_FILTER_ANISOTROPIC, 8); break;
+    case TEXTURE_FILTER_ANISOTROPIC_16X: rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_FILTER_ANISOTROPIC, 16); break;
+    default: break;
+    }
+}
+
+// Set texture wrapping mode
+void SetTextureWrapWithoutBind(Texture2D texture, int wrap)
+{
+    switch (wrap)
+    {
+    case TEXTURE_WRAP_REPEAT:
+    {
+        // NOTE: It only works if NPOT textures are supported, i.e. OpenGL ES 2.0 could not support it
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_S, RL_TEXTURE_WRAP_REPEAT);
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_T, RL_TEXTURE_WRAP_REPEAT);
+    } break;
+    case TEXTURE_WRAP_CLAMP:
+    {
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_S, RL_TEXTURE_WRAP_CLAMP);
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_T, RL_TEXTURE_WRAP_CLAMP);
+    } break;
+    case TEXTURE_WRAP_MIRROR_REPEAT:
+    {
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_S, RL_TEXTURE_WRAP_MIRROR_REPEAT);
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_T, RL_TEXTURE_WRAP_MIRROR_REPEAT);
+    } break;
+    case TEXTURE_WRAP_MIRROR_CLAMP:
+    {
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_S, RL_TEXTURE_WRAP_MIRROR_CLAMP);
+        rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_WRAP_T, RL_TEXTURE_WRAP_MIRROR_CLAMP);
+    } break;
+    default: break;
+    }
+}
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------------
 // Texture drawing functions
 //------------------------------------------------------------------------------------
