@@ -1532,6 +1532,7 @@ RLAPI void DrawGrid(int slices, float spacing);                                 
 
 // Model management functions
 RLAPI Model LoadModel(const char *fileName);                                                // Load model from files (meshes and materials)
+RLAPI Model LoadObjModelFromMemory(const char* objData);                                    // Load obj model from memory (meshes)
 RLAPI Model LoadModelFromMesh(Mesh mesh);                                                   // Load model from generated mesh (default material)
 RLAPI bool IsModelReady(Model model);                                                       // Check if a model is ready
 RLAPI void UnloadModel(Model model);                                                        // Unload model (including meshes) from memory (RAM and/or VRAM)

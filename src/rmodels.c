@@ -149,6 +149,7 @@
 //----------------------------------------------------------------------------------
 #if defined(SUPPORT_FILEFORMAT_OBJ)
 static Model LoadOBJ(const char *fileName);     // Load OBJ mesh data
+static Model LoadOBJFromMemory(const char* data);     // Load OBJ mesh data
 #endif
 #if defined(SUPPORT_FILEFORMAT_IQM)
 static Model LoadIQM(const char *fileName);     // Load IQM mesh data
@@ -1069,6 +1070,34 @@ Model LoadModel(const char *fileName)
         model.materials[0] = LoadMaterialDefault();
 
         if (model.meshMaterial == NULL) model.meshMaterial = (int *)RL_CALLOC(model.meshCount, sizeof(int));
+    }
+
+    return model;
+}
+
+Model LoadObjModelFromMemory(const char* objData)
+{
+    Model model = LoadOBJFromMemory(objData);
+
+    // Make sure model transform is set to identity matrix!
+    model.transform = MatrixIdentity();
+
+    if ((model.meshCount != 0) && (model.meshes != NULL))
+    {
+        // Upload vertex data to GPU (static meshes)
+        for (int i = 0; i < model.meshCount; i++) UploadMesh(&model.meshes[i], false);
+    }
+    else TRACELOG(LOG_WARNING, "MESH: [%s] Failed to load model mesh(es) data", "[from memory]");
+
+    if (model.materialCount == 0)
+    {
+        TRACELOG(LOG_WARNING, "MATERIAL: [%s] Failed to load model material data, default to white material", "[from memory]");
+
+        model.materialCount = 1;
+        model.materials = (Material*)RL_CALLOC(model.materialCount, sizeof(Material));
+        model.materials[0] = LoadMaterialDefault();
+
+        if (model.meshMaterial == NULL) model.meshMaterial = (int*)RL_CALLOC(model.meshCount, sizeof(int));
     }
 
     return model;
@@ -4299,6 +4328,116 @@ static Model LoadOBJ(const char *fileName)
         {
             TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to change working directory", currentDir);
         }
+    }
+
+    return model;
+}
+
+
+static Model LoadOBJFromMemory(const char* data)
+{
+    Model model = { 0 };
+
+    tinyobj_attrib_t attrib = { 0 };
+    tinyobj_shape_t* meshes = NULL;
+    unsigned int meshCount = 0;
+
+    tinyobj_material_t* materials = NULL;
+    unsigned int materialCount = 0;
+
+    if (data != NULL)
+    {
+        unsigned int dataSize = (unsigned int)strlen(data);
+
+
+        unsigned int flags = TINYOBJ_FLAG_TRIANGULATE;
+        int ret = tinyobj_parse_obj(&attrib, &meshes, &meshCount, &materials, &materialCount, data, dataSize, flags);
+
+        if (ret != TINYOBJ_SUCCESS) TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to load OBJ data", "[from memory]");
+        else TRACELOG(LOG_INFO, "MODEL: [%s] OBJ data loaded successfully: %i meshes/%i materials", "[from memory]", meshCount, materialCount);
+
+        // WARNING: We are not splitting meshes by materials (previous implementation)
+        // Depending on the provided OBJ that was not the best option and it just crashed
+        // so, implementation was simplified to prioritize parsed meshes
+        model.meshCount = meshCount;
+
+        // Set number of materials available
+        // NOTE: There could be more materials available than meshes but it will be resolved at 
+        // model.meshMaterial, just assigning the right material to corresponding mesh
+        model.materialCount = materialCount;
+        if (model.materialCount == 0)
+        {
+            model.materialCount = 1;
+            TRACELOG(LOG_INFO, "MODEL: No materials provided, setting one default material for all meshes");
+        }
+
+        // Init model meshes and materials
+        model.meshes = (Mesh*)RL_CALLOC(model.meshCount, sizeof(Mesh));
+        model.meshMaterial = (int*)RL_CALLOC(model.meshCount, sizeof(int)); // Material index assigned to each mesh
+        model.materials = (Material*)RL_CALLOC(model.materialCount, sizeof(Material));
+
+        // Process each provided mesh
+        for (int i = 0; i < model.meshCount; i++)
+        {
+            // WARNING: We need to calculate the mesh triangles manually using meshes[i].face_offset
+            // because in case of triangulated quads, meshes[i].length actually report quads, 
+            // despite the triangulation that is efectively considered on attrib.num_faces
+            unsigned int tris = 0;
+            if (i == model.meshCount - 1) tris = attrib.num_faces - meshes[i].face_offset;
+            else tris = meshes[i + 1].face_offset;
+
+            model.meshes[i].vertexCount = tris * 3;
+            model.meshes[i].triangleCount = tris;   // Face count (triangulated)
+            model.meshes[i].vertices = (float*)RL_CALLOC(model.meshes[i].vertexCount * 3, sizeof(float));
+            model.meshes[i].texcoords = (float*)RL_CALLOC(model.meshes[i].vertexCount * 2, sizeof(float));
+            model.meshes[i].normals = (float*)RL_CALLOC(model.meshes[i].vertexCount * 3, sizeof(float));
+            model.meshMaterial[i] = 0;  // By default, assign material 0 to each mesh
+            strcpy_s(model.meshes[i].name, MAX_NAME_LENGTH, meshes->name);
+
+            // Process all mesh faces
+            for (unsigned int face = 0, f = meshes[i].face_offset, v = 0, vt = 0, vn = 0; face < tris; face++, f++, v += 3, vt += 3, vn += 3)
+            {
+                // Get indices for the face
+                tinyobj_vertex_index_t idx0 = attrib.faces[f * 3 + 0];
+                tinyobj_vertex_index_t idx1 = attrib.faces[f * 3 + 1];
+                tinyobj_vertex_index_t idx2 = attrib.faces[f * 3 + 2];
+
+                // Fill vertices buffer (float) using vertex index of the face
+                for (int n = 0; n < 3; n++) { model.meshes[i].vertices[v * 3 + n] = attrib.vertices[idx0.v_idx * 3 + n]; }
+                for (int n = 0; n < 3; n++) { model.meshes[i].vertices[(v + 1) * 3 + n] = attrib.vertices[idx1.v_idx * 3 + n]; }
+                for (int n = 0; n < 3; n++) { model.meshes[i].vertices[(v + 2) * 3 + n] = attrib.vertices[idx2.v_idx * 3 + n]; }
+
+                if (attrib.num_texcoords > 0)
+                {
+                    // Fill texcoords buffer (float) using vertex index of the face
+                    // NOTE: Y-coordinate must be flipped upside-down
+                    model.meshes[i].texcoords[vt * 2 + 0] = attrib.texcoords[idx0.vt_idx * 2 + 0];
+                    model.meshes[i].texcoords[vt * 2 + 1] = 1.0f - attrib.texcoords[idx0.vt_idx * 2 + 1];
+
+                    model.meshes[i].texcoords[(vt + 1) * 2 + 0] = attrib.texcoords[idx1.vt_idx * 2 + 0];
+                    model.meshes[i].texcoords[(vt + 1) * 2 + 1] = 1.0f - attrib.texcoords[idx1.vt_idx * 2 + 1];
+
+                    model.meshes[i].texcoords[(vt + 2) * 2 + 0] = attrib.texcoords[idx2.vt_idx * 2 + 0];
+                    model.meshes[i].texcoords[(vt + 2) * 2 + 1] = 1.0f - attrib.texcoords[idx2.vt_idx * 2 + 1];
+                }
+
+                if (attrib.num_normals > 0)
+                {
+                    // Fill normals buffer (float) using vertex index of the face
+                    for (int n = 0; n < 3; n++) { model.meshes[i].normals[vn * 3 + n] = attrib.normals[idx0.vn_idx * 3 + n]; }
+                    for (int n = 0; n < 3; n++) { model.meshes[i].normals[(vn + 1) * 3 + n] = attrib.normals[idx1.vn_idx * 3 + n]; }
+                    for (int n = 0; n < 3; n++) { model.meshes[i].normals[(vn + 2) * 3 + n] = attrib.normals[idx2.vn_idx * 3 + n]; }
+                }
+            }
+        }
+
+        // Init model materials
+        if (materialCount > 0) ProcessMaterialsOBJ(model.materials, materials, materialCount);
+        else model.materials[0] = LoadMaterialDefault(); // Set default material for the mesh
+
+        tinyobj_attrib_free(&attrib);
+        tinyobj_shapes_free(meshes, model.meshCount);
+        tinyobj_materials_free(materials, materialCount);
     }
 
     return model;
