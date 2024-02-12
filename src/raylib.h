@@ -1554,7 +1554,7 @@ RLAPI void UpdateMeshBuffer(Mesh mesh, int index, const void *data, int dataSize
 RLAPI void UnloadMesh(Mesh mesh);                                                           // Unload mesh data from CPU and GPU
 RLAPI void DrawMesh(Mesh mesh, Material material, Matrix transform);                        // Draw a 3d mesh with material and transform
 RLAPI void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, int instances); // Draw multiple mesh instances with material and different transforms
-RLAPI void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int instances); // Draw multiple mesh instances with material and different transforms
+RLAPI void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int instances, bool linesOnly); // Draw multiple mesh instances with material and different transforms
 RLAPI void UnbindAllTextures();
 RLAPI BoundingBox GetMeshBoundingBox(Mesh mesh);                                            // Compute mesh bounding box limits
 RLAPI void GenMeshTangents(Mesh *mesh);                                                     // Compute mesh tangents

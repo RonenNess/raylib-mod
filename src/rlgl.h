@@ -702,8 +702,8 @@ RLAPI void rlSetVertexAttributeDivisor(unsigned int index, int divisor); // Set 
 RLAPI void rlSetVertexAttributeDefault(int locIndex, const void *value, int attribType, int count); // Set vertex attribute default value, when attribute to provided
 RLAPI void rlDrawVertexArray(int offset, int count);    // Draw vertex array (currently active vao)
 RLAPI void rlDrawVertexArrayElements(int offset, int count, const void *buffer); // Draw vertex array elements
-RLAPI void rlDrawVertexArrayInstanced(int offset, int count, int instances); // Draw vertex array (currently active vao) with instancing
-RLAPI void rlDrawVertexArrayElementsInstanced(int offset, int count, const void *buffer, int instances); // Draw vertex array elements with instancing
+RLAPI void rlDrawVertexArrayInstanced(int offset, int count, int instances, bool linesOnly); // Draw vertex array (currently active vao) with instancing
+RLAPI void rlDrawVertexArrayElementsInstanced(int offset, int count, const void *buffer, int instances, bool linesOnly); // Draw vertex array elements with instancing
 
 // Textures management
 RLAPI unsigned int rlLoadTexture(const void *data, int width, int height, int format, int mipmapCount); // Load texture data
@@ -3772,22 +3772,36 @@ void rlDrawVertexArrayElements(int offset, int count, const void *buffer)
 }
 
 // Draw vertex array instanced
-void rlDrawVertexArrayInstanced(int offset, int count, int instances)
+void rlDrawVertexArrayInstanced(int offset, int count, int instances, bool linesOnly)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
-    glDrawArraysInstanced(GL_TRIANGLES, 0, count, instances);
+    if (linesOnly)
+    {
+        glDrawArraysInstanced(RL_LINES, 0, count, instances);
+    }
+    else
+    {
+        glDrawArraysInstanced(GL_TRIANGLES, 0, count, instances);
+    }
 #endif
 }
 
 // Draw vertex array elements instanced
-void rlDrawVertexArrayElementsInstanced(int offset, int count, const void *buffer, int instances)
+void rlDrawVertexArrayElementsInstanced(int offset, int count, const void *buffer, int instances, bool linesOnly)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
     // NOTE: Added pointer math separately from function to avoid UBSAN complaining
     unsigned short *bufferPtr = (unsigned short *)buffer;
     if (offset > 0) bufferPtr += offset;
 
-    glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (const unsigned short *)bufferPtr, instances);
+    if (linesOnly)
+    {
+        glDrawElementsInstanced(RL_LINES, count, GL_UNSIGNED_SHORT, (const unsigned short*)bufferPtr, instances);
+    }
+    else
+    {
+        glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (const unsigned short*)bufferPtr, instances);
+    }
 #endif
 }
 

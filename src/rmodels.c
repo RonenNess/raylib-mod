@@ -1743,8 +1743,8 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
         rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
 
         // Draw mesh instanced
-        if (mesh.indices != NULL) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount*3, 0, instances);
-        else rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
+        if (mesh.indices != NULL) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount*3, 0, instances, false);
+        else rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances, false);
     }
 
     // Unbind all bound texture maps
@@ -1785,7 +1785,7 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
 
 
 // Draw multiple mesh instances with material and different transforms
-void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int instances)
+void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int instances, bool linesOnly)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
 
@@ -1917,11 +1917,11 @@ void DrawMeshInstancedEx(Mesh mesh, Shader shader, const float* transforms, int 
         // Draw mesh instanced
         if (mesh.indices != NULL)
         {
-            rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, 0, instances);
+            rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, 0, instances, linesOnly);
         }
         else
         {
-            rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
+            rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances, linesOnly);
         }
     }
 
