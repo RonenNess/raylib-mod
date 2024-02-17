@@ -586,6 +586,8 @@ RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigne
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
 
+RLAPI void rlDontAutoBindTextures();
+
 //------------------------------------------------------------------------------------
 // Functions Declaration - OpenGL style functions (common to 1.1, 3.3+, ES2)
 // NOTE: This functions are used to completely abstract raylib code from OpenGL layer,
