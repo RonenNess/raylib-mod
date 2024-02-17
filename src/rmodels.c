@@ -4274,7 +4274,7 @@ static Model LoadOBJ(const char *fileName)
             model.meshes[i].texcoords = (float *)RL_CALLOC(model.meshes[i].vertexCount*2, sizeof(float));
             model.meshes[i].normals = (float *)RL_CALLOC(model.meshes[i].vertexCount*3, sizeof(float));
             model.meshMaterial[i] = 0;  // By default, assign material 0 to each mesh
-            strcpy_s(model.meshes[i].name, MAX_NAME_LENGTH, meshes->name);
+            strcpy_s(model.meshes[i].name, MAX_NAME_LENGTH, meshes[i].name);
 
             // Process all mesh faces
             for (unsigned int face = 0, f = meshes[i].face_offset, v = 0, vt = 0, vn = 0; face < tris; face++, f++, v += 3, vt += 3, vn += 3)
