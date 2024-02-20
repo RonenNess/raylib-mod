@@ -352,6 +352,7 @@ typedef struct rlVertexBuffer {
     float *texcoords;           // Vertex texture coordinates (UV - 2 components per vertex) (shader-location = 1)
     unsigned char *colors;      // Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
     float* normals;             // Vertex normals (XYZ - 3 components per vertex) 
+    float* tangents;             // Vertex tangents (XYZ - 3 components per vertex) 
 #if defined(GRAPHICS_API_OPENGL_11) || defined(GRAPHICS_API_OPENGL_33)
     unsigned int *indices;      // Vertex indices (in case vertex data comes indexed) (6 indices per quad)
 #endif
@@ -359,7 +360,7 @@ typedef struct rlVertexBuffer {
     unsigned short *indices;    // Vertex indices (in case vertex data comes indexed) (6 indices per quad)
 #endif
     unsigned int vaoId;         // OpenGL Vertex Array Object id
-    unsigned int vboId[5];      // OpenGL Vertex Buffer Objects id (5 types of vertex data)
+    unsigned int vboId[6];      // OpenGL Vertex Buffer Objects id (6 types of vertex data)
 } rlVertexBuffer;
 
 // Draw call type
@@ -582,6 +583,7 @@ RLAPI void rlVertex2f(float x, float y);                // Define one vertex (po
 RLAPI void rlVertex3f(float x, float y, float z);       // Define one vertex (position) - 3 float
 RLAPI void rlTexCoord2f(float x, float y);              // Define one vertex (texture coordinate) - 2 float
 RLAPI void rlNormal3f(float x, float y, float z);       // Define one vertex (normal) - 3 float
+RLAPI void rlTangent3f(float x, float y, float z);      // Define one vertex (tangents) - 3 float
 RLAPI void rlColor4ub(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Define one vertex (color) - 4 byte
 RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (color) - 3 float
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
@@ -986,6 +988,7 @@ typedef struct rlglData {
         int vertexCounter;                  // Current active render batch vertex counter (generic, used for all batches)
         float texcoordx, texcoordy;         // Current active texture coordinate (added on glVertex*())
         float normalx, normaly, normalz;    // Current active normal (added on glVertex*())
+        float tangentx, tangenty, tangentz;    // Current active tangents (added on glVertex*())
         unsigned char colorr, colorg, colorb, colora;   // Current active color (added on glVertex*())
 
         int currentMatrixMode;              // Current matrix mode
@@ -1464,6 +1467,11 @@ void rlVertex3f(float x, float y, float z)
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].normals[3*RLGL.State.vertexCounter + 1] = RLGL.State.normaly;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].normals[3*RLGL.State.vertexCounter + 2] = RLGL.State.normalz;
 
+    // Add current tangent
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].tangents[3 * RLGL.State.vertexCounter] = RLGL.State.tangentx;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].tangents[3 * RLGL.State.vertexCounter + 1] = RLGL.State.tangenty;
+    RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].tangents[3 * RLGL.State.vertexCounter + 2] = RLGL.State.tangentz;
+
     // Add current color
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors[4*RLGL.State.vertexCounter] = RLGL.State.colorr;
     RLGL.currentBatch->vertexBuffer[RLGL.currentBatch->currentBuffer].colors[4*RLGL.State.vertexCounter + 1] = RLGL.State.colorg;
@@ -1501,6 +1509,15 @@ void rlNormal3f(float x, float y, float z)
     RLGL.State.normalx = x;
     RLGL.State.normaly = y;
     RLGL.State.normalz = z;
+}
+
+// Define one vertex (tangents)
+// NOTE: Normals limited to TRIANGLES only?
+void rlTangent3f(float x, float y, float z)
+{
+    RLGL.State.tangentx = x;
+    RLGL.State.tangenty = y;
+    RLGL.State.tangentz = z;
 }
 
 // Define one vertex (color)
@@ -2612,6 +2629,7 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         batch.vertexBuffer[i].vertices = (float *)RL_MALLOC(bufferElements*3*4*sizeof(float));        // 3 float by vertex, 4 vertex by quad
         batch.vertexBuffer[i].texcoords = (float *)RL_MALLOC(bufferElements*2*4*sizeof(float));       // 2 float by texcoord, 4 texcoord by quad
         batch.vertexBuffer[i].normals = (float *)RL_MALLOC(bufferElements*3*4*sizeof(float));       // 3 float by normal, 4 normals by quad
+        batch.vertexBuffer[i].tangents = (float*)RL_MALLOC(bufferElements * 3 * 4 * sizeof(float));       // 3 float by tangent, 4 tangents by quad
         batch.vertexBuffer[i].colors = (unsigned char *)RL_MALLOC(bufferElements*4*4*sizeof(unsigned char));   // 4 float by color, 4 colors by quad
 #if defined(GRAPHICS_API_OPENGL_33)
         batch.vertexBuffer[i].indices = (unsigned int *)RL_MALLOC(bufferElements*6*sizeof(unsigned int));      // 6 int by quad (indices)
@@ -2624,6 +2642,7 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         for (int j = 0; j < (2*4*bufferElements); j++) batch.vertexBuffer[i].texcoords[j] = 0.0f;
         for (int j = 0; j < (4*4*bufferElements); j++) batch.vertexBuffer[i].colors[j] = 0;
         for (int j = 0; j < (3*4*bufferElements); j++) batch.vertexBuffer[i].normals[j] = 0;
+        for (int j = 0; j < (3*4*bufferElements); j++) batch.vertexBuffer[i].tangents[j] = 0;
 
         int k = 0;
 
@@ -2672,13 +2691,23 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TEXCOORD01]);
         glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TEXCOORD01], 2, GL_FLOAT, 0, 0, 0);
 
-        // Vertex normal buffer (shader-location = ???)
+        // Vertex normal buffer (shader-location = 2)
+        // note: default shader during init don't have RL_SHADER_LOC_VERTEX_NORMAL, so if its location is -1 we just hard-code put location 2
         glGenBuffers(1, &batch.vertexBuffer[i].vboId[3]);
         glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[3]);
         glBufferData(GL_ARRAY_BUFFER, bufferElements * 3 * 4 * sizeof(float), batch.vertexBuffer[i].normals, GL_DYNAMIC_DRAW);
         unsigned int normalsLocation = RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] != -1 ? RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] : 2;
         glEnableVertexAttribArray(normalsLocation);
         glVertexAttribPointer(normalsLocation, 3, GL_FLOAT, 0, 0, 0);
+
+        // Vertex tangents buffer (shader-location = 4)
+        // note: default shader during init don't have RL_SHADER_LOC_VERTEX_TANGENT, so if its location is -1 we just hard-code put location 4
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[4]);
+        glBindBuffer(GL_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[4]);
+        glBufferData(GL_ARRAY_BUFFER, bufferElements * 3 * 4 * sizeof(float), batch.vertexBuffer[i].tangents, GL_DYNAMIC_DRAW);
+        unsigned int tangensLocation = RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT] != -1 ? RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT] : 4;
+        glEnableVertexAttribArray(tangensLocation);
+        glVertexAttribPointer(tangensLocation, 3, GL_FLOAT, 0, 0, 0);
 
         // Vertex color buffer (shader-location = 3)
         glGenBuffers(1, &batch.vertexBuffer[i].vboId[2]);
@@ -2688,8 +2717,8 @@ rlRenderBatch rlLoadRenderBatch(int numBuffers, int bufferElements)
         glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_COLOR], 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
         
         // Fill index buffer
-        glGenBuffers(1, &batch.vertexBuffer[i].vboId[4]);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[4]);
+        glGenBuffers(1, &batch.vertexBuffer[i].vboId[5]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.vertexBuffer[i].vboId[5]);
 #if defined(GRAPHICS_API_OPENGL_33)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, bufferElements*6*sizeof(int), batch.vertexBuffer[i].indices, GL_STATIC_DRAW);
 #endif
@@ -2758,6 +2787,7 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[2]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[3]);
         glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[4]);
+        glDeleteBuffers(1, &batch.vertexBuffer[i].vboId[5]);
 
         // Delete VAOs from GPU (VRAM)
         if (RLGL.ExtSupported.vao) glDeleteVertexArrays(1, &batch.vertexBuffer[i].vaoId);
@@ -2768,6 +2798,7 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
         RL_FREE(batch.vertexBuffer[i].colors);
         RL_FREE(batch.vertexBuffer[i].indices);
         RL_FREE(batch.vertexBuffer[i].normals);
+        RL_FREE(batch.vertexBuffer[i].tangents);
     }
 
     // Unload arrays
@@ -2805,6 +2836,13 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
         {
             glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[3]);
             glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter * 3 * sizeof(float), batch->vertexBuffer[batch->currentBuffer].normals);
+        }
+
+        // Tangents buffer
+        if (RLGL.State.currentShaderLocs[SHADER_LOC_VERTEX_TANGENT] != -1)
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter * 3 * sizeof(float), batch->vertexBuffer[batch->currentBuffer].tangents);
         }
 
         // Colors buffer
@@ -2897,7 +2935,15 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
                     glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL]);
                 }
 
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
+                // Bind vertex attrib: tangents
+                if (RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT] != -1)
+                {
+                    glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
+                    glVertexAttribPointer(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT], 3, GL_FLOAT, 0, 0, 0);
+                    glEnableVertexAttribArray(RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT]);
+                }
+
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[5]);
             }
 
             // Setup some default shader values
