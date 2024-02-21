@@ -765,7 +765,7 @@ void DrawRectanglePro(Rectangle rec, Vector2 origin, float rotation, Color color
 
 
 // Draw a color-filled rectangle with pro parameters
-void DrawRectangleWithoutChangingTexture(Rectangle rec, Rectangle source, Vector2 sourceSize, Vector2 origin, float rotation, Color color)
+void DrawRectangleWithoutChangingTexture(Rectangle rec, Rectangle source, Vector2 sourceSize, Vector2 origin, float rotation, Color color, Vector3* normal)
 {
     Vector2 topLeft = { 0 };
     Vector2 topRight = { 0 };
@@ -811,7 +811,9 @@ void DrawRectangleWithoutChangingTexture(Rectangle rec, Rectangle source, Vector
     rlBegin(RL_QUADS);
     rlDontAutoBindTextures();
 
-    rlNormal3f(0.0f, 0.0f, 1.0f);
+    if (normal) {
+        rlNormal3f(normal->x, normal->y, normal->z);
+    }
     rlColor4ub(color.r, color.g, color.b, color.a);
 
     rlTexCoord2f(source.x / sourceSize.x, source.y / sourceSize.y);
