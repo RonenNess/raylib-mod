@@ -2832,14 +2832,14 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
         //glBufferData(GL_ARRAY_BUFFER, sizeof(float)*2*4*batch->vertexBuffer[batch->currentBuffer].elementCount, batch->vertexBuffer[batch->currentBuffer].texcoords, GL_DYNAMIC_DRAW); // Update all buffer
         
         // Normals buffer
-        if (RLGL.State.currentShaderLocs[SHADER_LOC_VERTEX_NORMAL] != -1)
+        if (RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_NORMAL] != -1)
         {
             glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[3]);
             glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter * 3 * sizeof(float), batch->vertexBuffer[batch->currentBuffer].normals);
         }
 
         // Tangents buffer
-        if (RLGL.State.currentShaderLocs[SHADER_LOC_VERTEX_TANGENT] != -1)
+        if (RLGL.State.currentShaderLocs[RL_SHADER_LOC_VERTEX_TANGENT] != -1)
         {
             glBindBuffer(GL_ARRAY_BUFFER, batch->vertexBuffer[batch->currentBuffer].vboId[4]);
             glBufferSubData(GL_ARRAY_BUFFER, 0, RLGL.State.vertexCounter * 3 * sizeof(float), batch->vertexBuffer[batch->currentBuffer].tangents);
