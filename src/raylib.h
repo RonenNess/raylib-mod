@@ -1567,7 +1567,8 @@ RLAPI Mesh GenMeshPlane(float width, float length, int resX, int resZ);         
 RLAPI Mesh GenMeshCube(float width, float height, float length);                            // Generate cuboid mesh
 RLAPI Mesh GenMeshSphere(float radius, int rings, int slices);                              // Generate sphere mesh (standard sphere)
 RLAPI Mesh GenMeshHemiSphere(float radius, int rings, int slices);                          // Generate half-sphere mesh (no bottom cap)
-RLAPI Mesh GenMeshCylinder(float radius, float height, int slices);                         // Generate cylinder mesh
+RLAPI Mesh GenMeshCylinder(float radius, float height, int slices);                         // Generate cylinder mesh, standing.
+RLAPI Mesh GenMeshCylinderCentered(float radius, float height, int slices);                 // Generate cylinder mesh, centered instead of standing.
 RLAPI Mesh GenMeshCone(float radius, float height, int slices);                             // Generate cone/pyramid mesh
 RLAPI Mesh GenMeshTorus(float radius, float size, int radSeg, int sides);                   // Generate torus mesh
 RLAPI Mesh GenMeshKnot(float radius, float size, int radSeg, int sides);                    // Generate trefoil knot mesh
