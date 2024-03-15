@@ -589,6 +589,7 @@ RLAPI void rlColor3f(float x, float y, float z);        // Define one vertex (co
 RLAPI void rlColor4f(float x, float y, float z, float w); // Define one vertex (color) - 4 float
 
 RLAPI void rlDontAutoBindTextures();
+RLAPI void rlSetDepthOffset(float slope, float constant);
 
 //------------------------------------------------------------------------------------
 // Functions Declaration - OpenGL style functions (common to 1.1, 3.3+, ES2)
