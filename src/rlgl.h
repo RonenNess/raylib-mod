@@ -1543,6 +1543,23 @@ void rlColor3f(float x, float y, float z)
 
 #endif
 
+// set depth offset
+void rlSetDepthOffset(float slope, float constant)
+{
+    if (slope != 0 || constant != 0) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glEnable(GL_POLYGON_OFFSET_LINE);
+        glEnable(GL_POLYGON_OFFSET_POINT);
+        glPolygonOffset(slope, constant);
+    }
+    else {
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDisable(GL_POLYGON_OFFSET_LINE);
+        glDisable(GL_POLYGON_OFFSET_POINT);
+    }
+
+}
+
 //--------------------------------------------------------------------------------------
 // Module Functions Definition - OpenGL style functions (common to 1.1, 3.3+, ES2)
 //--------------------------------------------------------------------------------------
