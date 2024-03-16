@@ -2284,6 +2284,16 @@ ModelAnimation *LoadModelAnimations(const char *fileName, int *animCount)
     return animations;
 }
 
+void ClearModelAnimations(Model model)
+{
+    for (int m = 0; m < model.meshCount; m++)
+    {
+        Mesh mesh = model.meshes[m];
+        rlUpdateVertexBuffer(mesh.vboId[0], mesh.vertices, mesh.vertexCount * 3 * sizeof(float), 0); // Update vertex position
+        rlUpdateVertexBuffer(mesh.vboId[2], mesh.normals, mesh.vertexCount * 3 * sizeof(float), 0);  // Update vertex normals
+    }
+}
+
 // Update model animated vertex data (positions and normals) for a given frame
 // NOTE: Updated data is uploaded to GPU
 void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
@@ -2395,6 +2405,7 @@ void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
         }
     }
 }
+
 
 // Update model animated vertex data (positions and normals) for a given frame
 // NOTE: Updated data is uploaded to GPU
