@@ -2284,6 +2284,132 @@ ModelAnimation *LoadModelAnimations(const char *fileName, int *animCount)
     return animations;
 }
 
+inline Vector3 lerpVector(const Vector3 a, const Vector3 b, float delta)
+{
+    float inv = (1.f - delta);
+    Vector3 result = { a.x * inv + b.x * delta, a.y * inv + b.y * delta, a.z * inv + b.z * delta };
+    return result;
+}
+
+inline Quaternion lerpQuat(const Quaternion a, const Quaternion b, float delta)
+{
+    float inv = (1.f - delta);
+    Quaternion result = { a.x * inv + b.x * delta, a.y * inv + b.y * delta, a.z * inv + b.z * delta, a.w * inv + b.w * delta };
+    return result;
+}
+
+// Update model animated vertex data (positions and normals) for a given frame
+// NOTE: Updated data is uploaded to GPU
+void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
+{
+    // get frame from time + delta from current frame to next frame
+    int frame = (int)floorf(time);
+    float delta = (time - (float)frame);
+
+    if ((anim.frameCount > 0) && (anim.bones != NULL) && (anim.framePoses != NULL))
+    {
+        // make sure frame in range
+        if (frame >= anim.frameCount) frame = frame % anim.frameCount;
+
+        // get next frame index
+        int nextFrame = frame + 1;
+        if (nextFrame >= anim.frameCount) nextFrame = 0;
+
+        for (int m = 0; m < model.meshCount; m++)
+        {
+            Mesh mesh = model.meshes[m];
+
+            if (mesh.boneIds == NULL || mesh.boneWeights == NULL)
+            {
+                TRACELOG(LOG_WARNING, "MODEL: UpdateModelAnimation(): Mesh %i has no connection to bones", m);
+                continue;
+            }
+
+            bool updated = false;           // Flag to check when anim vertex information is updated
+            Vector3 animVertex = { 0 };
+            Vector3 animNormal = { 0 };
+
+            Vector3 inTranslation = { 0 };
+            Quaternion inRotation = { 0 };
+            // Vector3 inScale = { 0 };
+
+            Vector3 outTranslation = { 0 };
+            Quaternion outRotation = { 0 };
+            Vector3 outScale = { 0 };
+
+            int boneId = 0;
+            int boneCounter = 0;
+            float boneWeight = 0.0;
+
+            const int vValues = mesh.vertexCount * 3;
+            for (int vCounter = 0; vCounter < vValues; vCounter += 3)
+            {
+                mesh.animVertices[vCounter] = 0;
+                mesh.animVertices[vCounter + 1] = 0;
+                mesh.animVertices[vCounter + 2] = 0;
+
+                if (mesh.animNormals != NULL)
+                {
+                    mesh.animNormals[vCounter] = 0;
+                    mesh.animNormals[vCounter + 1] = 0;
+                    mesh.animNormals[vCounter + 2] = 0;
+                }
+
+                // Iterates over 4 bones per vertex
+                for (int j = 0; j < 4; j++, boneCounter++)
+                {
+                    boneWeight = mesh.boneWeights[boneCounter];
+
+                    // Early stop when no transformation will be applied
+                    if (boneWeight == 0.0f) continue;
+
+                    boneId = mesh.boneIds[boneCounter];
+                    //int boneIdParent = model.bones[boneId].parent;
+                    inTranslation = model.bindPose[boneId].translation;
+                    inRotation = model.bindPose[boneId].rotation;
+                    //inScale = model.bindPose[boneId].scale;
+
+                    outTranslation = lerpVector(anim.framePoses[frame][boneId].translation, anim.framePoses[nextFrame][boneId].translation, delta);
+                    outRotation = lerpQuat(anim.framePoses[frame][boneId].rotation, anim.framePoses[nextFrame][boneId].rotation, delta);
+                    outScale = lerpVector(anim.framePoses[frame][boneId].scale, anim.framePoses[nextFrame][boneId].scale, delta);
+
+                    // Vertices processing
+                    // NOTE: We use meshes.vertices (default vertex position) to calculate meshes.animVertices (animated vertex position)
+                    animVertex = (Vector3){ mesh.vertices[vCounter], mesh.vertices[vCounter + 1], mesh.vertices[vCounter + 2] };
+                    animVertex = Vector3Subtract(animVertex, inTranslation);
+                    animVertex = Vector3Multiply(animVertex, outScale);
+                    animVertex = Vector3RotateByQuaternion(animVertex, QuaternionMultiply(outRotation, QuaternionInvert(inRotation)));
+                    animVertex = Vector3Add(animVertex, outTranslation);
+                    //animVertex = Vector3Transform(animVertex, model.transform);
+                    mesh.animVertices[vCounter] += animVertex.x * boneWeight;
+                    mesh.animVertices[vCounter + 1] += animVertex.y * boneWeight;
+                    mesh.animVertices[vCounter + 2] += animVertex.z * boneWeight;
+                    updated = true;
+
+                    // Normals processing
+                    // NOTE: We use meshes.baseNormals (default normal) to calculate meshes.normals (animated normals)
+                    if (mesh.normals != NULL)
+                    {
+                        animNormal = (Vector3){ mesh.normals[vCounter], mesh.normals[vCounter + 1], mesh.normals[vCounter + 2] };
+                        animNormal = Vector3RotateByQuaternion(animNormal, QuaternionMultiply(outRotation, QuaternionInvert(inRotation)));
+                        mesh.animNormals[vCounter] += animNormal.x * boneWeight;
+                        mesh.animNormals[vCounter + 1] += animNormal.y * boneWeight;
+                        mesh.animNormals[vCounter + 2] += animNormal.z * boneWeight;
+                    }
+                }
+            }
+
+            // Upload new vertex data to GPU for model drawing
+            // NOTE: Only update data when values changed
+            if (updated)
+            {
+                rlUpdateVertexBuffer(mesh.vboId[0], mesh.animVertices, mesh.vertexCount * 3 * sizeof(float), 0); // Update vertex position
+                rlUpdateVertexBuffer(mesh.vboId[2], mesh.animNormals, mesh.vertexCount * 3 * sizeof(float), 0);  // Update vertex normals
+            }
+        }
+    }
+}
+
 // Update model animated vertex data (positions and normals) for a given frame
 // NOTE: Updated data is uploaded to GPU
 void UpdateModelAnimation(Model model, ModelAnimation anim, int frame)
