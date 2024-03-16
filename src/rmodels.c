@@ -2284,20 +2284,6 @@ ModelAnimation *LoadModelAnimations(const char *fileName, int *animCount)
     return animations;
 }
 
-inline Vector3 lerpVector(const Vector3 a, const Vector3 b, float delta)
-{
-    float inv = (1.f - delta);
-    Vector3 result = { a.x * inv + b.x * delta, a.y * inv + b.y * delta, a.z * inv + b.z * delta };
-    return result;
-}
-
-inline Quaternion lerpQuat(const Quaternion a, const Quaternion b, float delta)
-{
-    float inv = (1.f - delta);
-    Quaternion result = { a.x * inv + b.x * delta, a.y * inv + b.y * delta, a.z * inv + b.z * delta, a.w * inv + b.w * delta };
-    return result;
-}
-
 // Update model animated vertex data (positions and normals) for a given frame
 // NOTE: Updated data is uploaded to GPU
 void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
@@ -2305,7 +2291,7 @@ void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
     // get frame from time + delta from current frame to next frame
     int frame = (int)floorf(time);
     float delta = (time - (float)frame);
-
+    
     if ((anim.frameCount > 0) && (anim.bones != NULL) && (anim.framePoses != NULL))
     {
         // make sure frame in range
@@ -2313,7 +2299,7 @@ void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
 
         // get next frame index
         int nextFrame = frame + 1;
-        if (nextFrame >= anim.frameCount) nextFrame = 0;
+        if (nextFrame >= anim.frameCount) nextFrame = nextFrame % anim.frameCount;
 
         for (int m = 0; m < model.meshCount; m++)
         {
@@ -2369,9 +2355,9 @@ void UpdateModelAnimationSmooth(Model model, ModelAnimation anim, float time)
                     inRotation = model.bindPose[boneId].rotation;
                     //inScale = model.bindPose[boneId].scale;
 
-                    outTranslation = lerpVector(anim.framePoses[frame][boneId].translation, anim.framePoses[nextFrame][boneId].translation, delta);
-                    outRotation = lerpQuat(anim.framePoses[frame][boneId].rotation, anim.framePoses[nextFrame][boneId].rotation, delta);
-                    outScale = lerpVector(anim.framePoses[frame][boneId].scale, anim.framePoses[nextFrame][boneId].scale, delta);
+                    outTranslation = Vector3Lerp(anim.framePoses[frame][boneId].translation, anim.framePoses[nextFrame][boneId].translation, delta);
+                    outRotation = QuaternionSlerp(anim.framePoses[frame][boneId].rotation, anim.framePoses[nextFrame][boneId].rotation, delta);
+                    outScale = Vector3Lerp(anim.framePoses[frame][boneId].scale, anim.framePoses[nextFrame][boneId].scale, delta);
 
                     // Vertices processing
                     // NOTE: We use meshes.vertices (default vertex position) to calculate meshes.animVertices (animated vertex position)
