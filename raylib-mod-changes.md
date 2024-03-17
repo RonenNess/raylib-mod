@@ -17,3 +17,4 @@
 - When loading gltf animations, if interpolation is not linear instead of letting data be corrupted and printing warning, changed behavior to still print warning but use linear interpolation anyway, so animation won't be completely broken.
 - Added smooth model animation.
 - Added method to clear model animations.
+- Added method to draw mesh / model without prior setup.

@@ -1541,6 +1541,8 @@ RLAPI BoundingBox GetModelBoundingBox(Model model);                             
 // Model drawing functions
 RLAPI void DrawModel(Model model, Vector3 position, float scale, Color tint);               // Draw a model (with texture if set)
 RLAPI void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model with extended parameters
+RLAPI void DrawModelNoSetup(Model model, Shader shader, Matrix transform);                  // Draw model meshes without doing any setup to shader. this method just send mesh parts to GPU and render it.
+RLAPI void DrawMeshNoSetup(Mesh mesh, Shader shader);                                       // Draw a mesh without doing any setup to shader. this method just send mesh parts to GPU and render it.
 RLAPI void DrawModelWires(Model model, Vector3 position, float scale, Color tint);          // Draw a model wires (with texture if set)
 RLAPI void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model wires (with texture if set) with extended parameters
 RLAPI void DrawBoundingBox(BoundingBox box, Color color);                                   // Draw bounding box (wires)
