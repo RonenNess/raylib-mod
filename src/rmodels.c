@@ -6069,8 +6069,8 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
                         }
                     }
 
-                    if (animData.channels[j].sampler->interpolation != cgltf_interpolation_type_linear) {
-                        TRACELOG(LOG_WARNING, "MODEL: [%s] Only linear interpolation curves are supported for GLTF animation.", fileName);
+                    if (animData.channels[j].sampler->interpolation == cgltf_interpolation_type_cubic_spline) {
+                        TRACELOG(LOG_WARNING, "MODEL: [%s] Only linear/step interpolation curves are supported for GLTF animation.", fileName);
                     }
 
                     float t = 0.0f;
