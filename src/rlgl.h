@@ -4031,8 +4031,8 @@ unsigned int rlLoadShaderCode(const char *vsCode, const char *fsCode)
         if (id == 0)
         {
             // In case shader loading fails, we return the default shader
-            TRACELOG(RL_LOG_WARNING, "SHADER: Failed to load custom shader code, using default shader");
-            id = RLGL.State.defaultShaderId;
+            TRACELOG(RL_LOG_WARNING, "SHADER: Failed to load custom shader code!");
+            //id = RLGL.State.defaultShaderId;
         }
         /*
         else
