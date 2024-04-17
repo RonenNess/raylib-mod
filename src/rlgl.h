@@ -659,6 +659,7 @@ RLAPI bool rlIsStereoRenderEnabled(void);               // Check if stereo rende
 
 RLAPI void rlClearColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a); // Clear color buffer with color
 RLAPI void rlClearScreenBuffers(void);                  // Clear used screen buffers (color and depth)
+RLAPI void rlClearScreenDepth(void);                    // Clear depth buffer
 RLAPI void rlCheckErrors(void);                         // Check and log OpenGL error codes
 RLAPI void rlSetBlendMode(int mode);                    // Set blending mode
 RLAPI void rlSetBlendFactors(int glSrcFactor, int glDstFactor, int glEquation); // Set blending mode factor and equation (using OpenGL factors)
@@ -2000,6 +2001,12 @@ void rlClearScreenBuffers(void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // Clear used buffers: Color and Depth (Depth is used for 3D)
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);     // Stencil buffer not used...
+}
+
+// Clear used screen buffers depth
+void rlClearScreenDepth(void)
+{
+    glClear(GL_DEPTH_BUFFER_BIT);
 }
 
 // Check and log OpenGL error codes
