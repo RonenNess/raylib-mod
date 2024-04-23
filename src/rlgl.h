@@ -243,6 +243,7 @@
 #define RL_TEXTURE_WRAP_T                       0x2803      // GL_TEXTURE_WRAP_T
 #define RL_TEXTURE_MAG_FILTER                   0x2800      // GL_TEXTURE_MAG_FILTER
 #define RL_TEXTURE_MIN_FILTER                   0x2801      // GL_TEXTURE_MIN_FILTER
+#define RL_TEXTURE_MIN_LOD                      0x813A
 
 #define RL_TEXTURE_FILTER_NEAREST               0x2600      // GL_NEAREST
 #define RL_TEXTURE_FILTER_LINEAR                0x2601      // GL_LINEAR
@@ -1680,6 +1681,10 @@ void rlTextureParametersWithoutBind(unsigned int id, int param, int value)
 
     switch (param)
     {
+    case RL_TEXTURE_MIN_LOD:
+        glTexParameteri(GL_TEXTURE_2D, param, value);
+        break;
+
     case RL_TEXTURE_WRAP_S:
     case RL_TEXTURE_WRAP_T:
     {

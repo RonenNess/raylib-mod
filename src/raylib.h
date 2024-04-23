@@ -1408,7 +1408,8 @@ RLAPI void UpdateTextureRec(Texture2D texture, Rectangle rec, const void *pixels
 RLAPI void GenTextureMipmaps(Texture2D *texture);                                                        // Generate GPU mipmaps for a texture
 RLAPI void SetTextureFilter(Texture2D texture, int filter);                                              // Set texture scaling filter mode
 RLAPI void SetTextureWrap(Texture2D texture, int wrap);                                                  // Set texture wrapping mode
-RLAPI void SetTextureFilterWithoutBind(Texture2D texture, int filter);                                              // Set texture scaling filter mode
+RLAPI void SetTextureFilterWithoutBind(Texture2D texture, int filter);                                   // Set texture scaling filter mode without binding
+RLAPI void SetTextureMinLodWithoutBind(Texture2D texture, int minLod);                                   // Set texture min LoD without binding
 RLAPI void SetTextureWrapWithoutBind(Texture2D texture, int wrap);
 
 // Texture drawing functions

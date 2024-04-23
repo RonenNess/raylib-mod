@@ -4096,7 +4096,10 @@ void SetTextureWrap(Texture2D texture, int wrap)
 
 
 
-
+void SetTextureMinLodWithoutBind(Texture2D texture, int minLod)
+{
+    rlTextureParametersWithoutBind(texture.id, RL_TEXTURE_MIN_LOD, minLod);
+}
 
 
 // Set texture scaling filter mode
