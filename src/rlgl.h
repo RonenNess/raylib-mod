@@ -1576,6 +1576,7 @@ void rlTexCoord2f(float x, float y)
 // NOTE: Normals limited to TRIANGLES only?
 void rlNormal3f(float x, float y, float z)
 {
+    /*
     float normalx = x;
     float normaly = y;
     float normalz = z;
@@ -1593,9 +1594,10 @@ void rlNormal3f(float x, float y, float z)
         normaly *= ilength;
         normalz *= ilength;
     }
-    RLGL.State.normalx = normalx;
-    RLGL.State.normaly = normaly;
-    RLGL.State.normalz = normalz;
+    */
+    RLGL.State.normalx = x;
+    RLGL.State.normaly = y;
+    RLGL.State.normalz = z;
 }
 
 // Define one vertex (color)
